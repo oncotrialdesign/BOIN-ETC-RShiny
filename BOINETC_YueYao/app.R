@@ -276,19 +276,36 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-  rv <- reactiveValues(sum1_all = sum1_all, sum2_all = sum2_all, last_run = NULL, status = "No new simulation run in this session.")
-  input_df <- reactive(truth_df(as.numeric(input$scenario)))
+  rv <- reactiveValues(
+    sum1_all = sum1_all,
+    sum2_all = sum2_all,
+    last_run = NULL,
+    status = "No new simulation run in this session.",
+    active_scenario = 4,
+    active_method = "BOINETC_m3",
+    active_earlystop = 9
+  )
+
+  # IMPORTANT:
+  # Outputs below use rv$active_* instead of input$*.
+  # Therefore changing dropdowns will NOT change the displayed results.
+  # The displayed setting changes only after clicking Run New Simulation.
+  input_df <- reactive(truth_df(as.numeric(rv$active_scenario)))
   odc_df <- reactive(subset(input_df(), True_ODC))
-  sum2_sel <- reactive(subset(rv$sum2_all, scenario == input$scenario & method == input$method & n.earlystop == input$earlystop))
-  sum1_sel <- reactive(subset(rv$sum1_all, scenario == input$scenario & method == input$method & n.earlystop == input$earlystop))
-  alloc_sel <- reactive(allocation_df(input$method, as.numeric(input$scenario), input$earlystop))
+  sum2_sel <- reactive(subset(rv$sum2_all, scenario == rv$active_scenario & method == rv$active_method & n.earlystop == rv$active_earlystop))
+  sum1_sel <- reactive(subset(rv$sum1_all, scenario == rv$active_scenario & method == rv$active_method & n.earlystop == rv$active_earlystop))
+  alloc_sel <- reactive(allocation_df(rv$active_method, as.numeric(rv$active_scenario), rv$active_earlystop))
 
 
 
   observeEvent(input$run_sim, {
+    rv$active_scenario <- as.numeric(input$scenario)
+    rv$active_method <- input$method
+    rv$active_earlystop <- as.numeric(input$earlystop)
+
     rv$status <- "Running simulation..."
     tryCatch({
-      res <- run_one_boinetc(input$method, input$scenario, input$earlystop, input$ntrial)
+      res <- run_one_boinetc(rv$active_method, rv$active_scenario, rv$active_earlystop, input$ntrial)
       rv$sum1_all <- replace_rows(rv$sum1_all, res$out.sum1)
       rv$sum2_all <- replace_rows(rv$sum2_all, res$out.sum2)
       rv$last_run <- res
@@ -310,9 +327,9 @@ server <- function(input, output, session) {
     s2 <- sum2_sel()
     if (nrow(s2) == 0) return("No matching summary row found.")
     paste0(
-      "Scenario: ", input$scenario, "\n",
-      "Method: ", input$method, "\n",
-      "Early stopping threshold: ", input$earlystop, "\n",
+      "Scenario: ", rv$active_scenario, "\n",
+      "Method: ", rv$active_method, "\n",
+      "Early stopping threshold: ", rv$active_earlystop, "\n",
       "Correct pODC (%): ", s2$correct.pODC[1], "\n",
       "Mean number of patients: ", s2$mean.npat[1], "\n",
       "Target PPTS: ", s2$target.PPTS[1]
@@ -328,11 +345,11 @@ server <- function(input, output, session) {
   })
 
   output$tox_plot <- renderPlot({
-    plot_matrix(input_df(), "Toxicity", paste("Scenario", input$scenario, "True Toxicity"), "Toxicity")
+    plot_matrix(input_df(), "Toxicity", paste("Scenario", rv$active_scenario, "True Toxicity"), "Toxicity")
   })
 
   output$eff_plot <- renderPlot({
-    plot_matrix(input_df(), "Efficacy", paste("Scenario", input$scenario, "True Efficacy"), "Efficacy")
+    plot_matrix(input_df(), "Efficacy", paste("Scenario", rv$active_scenario, "True Efficacy"), "Efficacy")
   })
 
   output$truth_table <- renderDT({
@@ -340,18 +357,18 @@ server <- function(input, output, session) {
   })
 
   output$compare_table <- renderDT({
-    x <- subset(rv$sum2_all, scenario == input$scenario)
+    x <- subset(rv$sum2_all, scenario == rv$active_scenario)
     x <- x[order(-x$correct.pODC, x$target.PPTS), ]
     datatable(x, rownames = FALSE, options = list(pageLength = 10, scrollX = TRUE))
   })
 
   output$compare_plot <- renderPlot({
-    x <- subset(rv$sum2_all, scenario == input$scenario)
+    x <- subset(rv$sum2_all, scenario == rv$active_scenario)
     ggplot(x, aes(x = method, y = correct.pODC, group = factor(n.earlystop))) +
       geom_point(size = 3) +
       geom_line(aes(linetype = factor(n.earlystop))) +
       labs(x = "Method", y = "Correct pODC (%)", linetype = "n.earlystop",
-           title = paste("Scenario", input$scenario, "Correct pODC by Method")) +
+           title = paste("Scenario", rv$active_scenario, "Correct pODC by Method")) +
       theme_minimal(base_size = 13)
   })
 
@@ -376,7 +393,7 @@ server <- function(input, output, session) {
   })
 
   output$raw_table <- renderDT({
-    f <- raw_file_name(input$method, input$scenario, input$earlystop)
+    f <- raw_file_name(rv$active_method, rv$active_scenario, rv$active_earlystop)
     validate(need(file.exists(f), paste("File not found:", basename(f))))
     x <- read.csv(f, check.names = FALSE)
     datatable(x, rownames = FALSE, options = list(pageLength = 10, scrollX = TRUE))
@@ -387,12 +404,12 @@ server <- function(input, output, session) {
   })
 
   output$download_sum2 <- downloadHandler(
-    filename = function() paste0("BOINETC_selected_sum2_sc", input$scenario, "_", input$method, "_ns", input$earlystop, ".csv"),
+    filename = function() paste0("BOINETC_selected_sum2_sc", rv$active_scenario, "_", rv$active_method, "_ns", rv$active_earlystop, ".csv"),
     content = function(file) write.csv(sum2_sel(), file, row.names = FALSE)
   )
 
   output$download_truth <- downloadHandler(
-    filename = function() paste0("BOINETC_truth_matrix_sc", input$scenario, ".csv"),
+    filename = function() paste0("BOINETC_truth_matrix_sc", rv$active_scenario, ".csv"),
     content = function(file) write.csv(input_df(), file, row.names = FALSE)
   )
 }
