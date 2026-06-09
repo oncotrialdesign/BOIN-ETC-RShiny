@@ -20,6 +20,8 @@ BOIN-ETC Trial Design by Kakizume et al., 2024. Reference: Kakizume T, Takeda K,
 The original uploaded scripts are preserved under `inst/extdata/original/`.
 
 **Installation**
+Please download BOINETC_0.1.0.tar.gz to a local folder, e.g., C:/myfolder/BOINETC_0.1.0.tar.gz, then install locally with the correct directory. install.packages("C:/myfolder/BOINETC_0.1.0.tar.gz", repos = NULL, type = "source").
+
 **From the source tarball:**
 ```r
 install.packages("BOINETC_0.1.0.tar.gz", repos = NULL, type = "source")
