@@ -1,10 +1,8 @@
 # BOIN-ETC-RShiny
 BOIN-ETC Trial Design by Kakizume et al., 2024. Reference: Kakizume T, Takeda K, Taguri M, Morita S. BOIN-ETC: A Bayesian optimal interval design considering efficacy and toxicity to identify the optimal dose combinations. Stat Methods Med Res. 2024 Apr;33(4):716-727.
 
-The original R code is located at: http://github.com/kakizume/BOINETC.
-
 **BOINETC**
-`BOINETC` is an R package assembled from the provided BOIN-ETC simulation scripts. It preserves the original function names and adds package-friendly helpers for scenario selection, simulation, and summary output.
+`BOINETC` is an R package assembled from the provided BOIN-ETC script (located at: http://github.com/kakizume/BOINETC). It preserves the original function names and adds package-friendly helpers for scenario selection, simulation, and summary output.
 
 **Included core functions**
 `BOINETC.subtrial()` — select the next dose in a BOIN-ETC subtrial.
